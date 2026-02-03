@@ -1,45 +1,54 @@
-import 'dart:convert';
-
+import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:weather_app/models/weather.dart';
 
 class WeatherService {
-  static const baseUrl = "https://api.openweathermap.org/data/2.5/weather";
-  String? apiKey = dotenv.env['OPENWEATHER_API_KEY'];
+  static const String baseUrl = 'https://api.openweathermap.org/data/2.5';
 
-  WeatherService(this.apiKey);
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      queryParameters: {
+        'appid': dotenv.env['OPENWEATHER_API_KEY'],
+        'units': 'metric',
+      },
+    ),
+  );
 
-  Future<Weather> getWeather(String cityName) async {
-    final response = await http.get(
-      Uri.parse("$baseUrl?q=$cityName&appid=$apiKey&units=metric"),
+  WeatherService() {
+    _dio.interceptors.add(
+      LogInterceptor(requestBody: true, responseBody: true),
     );
+  }
 
-    if (response.statusCode == 200) {
-      return Weather.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception("Failed to load weather data");
+  Future<Weather> getWeather(Position position) async {
+    try {
+      final response = await _dio.get(
+        '/weather',
+        queryParameters: {'lat': position.latitude, 'lon': position.longitude},
+      );
+
+      return Weather.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Erro ao buscar dados do clima',
+      );
     }
   }
 
-  Future<String> getCurrentCity() async {
+  Future<Position> getCurrentPosition() async {
     LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
-      Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permissions are denied');
+      }
     }
 
-    Position position = await Geolocator.getCurrentPosition();
-
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      position.latitude,
-      position.longitude,
-    );
-
-    String? city = placemarks[0].locality;
-
-    return city ?? "";
+    return await Geolocator.getCurrentPosition();
   }
 }

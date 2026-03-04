@@ -18,6 +18,7 @@ class MyApp extends StatelessWidget {
       home: WeatherPage(),
       theme: lightTheme,
       darkTheme: darkTheme,
+      themeMode: ThemeMode.system,
     );
   }
 }

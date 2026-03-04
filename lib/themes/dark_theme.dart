@@ -6,5 +6,7 @@ ThemeData darkTheme = ThemeData(
     seedColor: Colors.amber,
     brightness: Brightness.dark,
   ),
-  textTheme: GoogleFonts.aBeeZeeTextTheme(),
+  textTheme: GoogleFonts.aBeeZeeTextTheme(
+    ThemeData(brightness: Brightness.dark).textTheme,
+  ),
 );
